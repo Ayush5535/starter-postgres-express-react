@@ -17,6 +17,7 @@ module.exports = async () => {
   app.use(logger('dev'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+  app.use(passport.initialize());
 
   const { db } = await DB();
   app.set('db', db);

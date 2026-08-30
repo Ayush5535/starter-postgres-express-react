@@ -1,0 +1,60 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: starter-db
+    environment:
+      POSTGRES_DB: starter
+      POSTGRES_USER: starter
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U starter -d starter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: starter-backend
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_NAME: starter
+      DB_USER: starter
+      DB_PASSWORD: password
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_ENABLE_SSL: "0"
+      JWT_SECRET: starter
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: starter-frontend
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

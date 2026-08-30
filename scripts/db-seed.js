@@ -13,7 +13,6 @@ const tableUsers = 'users';
 
 const createRecordPost = (db, table, user) => db[table].insert({
   title: faker.commerce.product(),
-  author: faker.internet.userName(),
   content: faker.lorem.text(),
   user_id: user.id,
 });
