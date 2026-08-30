@@ -1,162 +1,137 @@
-# Starter Full-Stack JS Project: Postgres + Express + React + Node (PERN)
+# Dockerized PERN Application on AWS EC2
 
-## Overview
+## Project Overview
 
-The frontend was added from a bootstrapped React project [Create React App](https://github.com/facebookincubator/create-react-app), then ejected and customized.
-The backend was added from a bootstrapped Express project [Express Generator](https://expressjs.com/en/starter/generator.html)
+This project is a 3-tier PERN stack application consisting of:
 
-## Folder Structure
+- Frontend: React + Nginx
+- Backend: Node.js + Express
+- Database: PostgreSQL 16 Alpine
+- Containerization: Docker and Docker Compose
+- Deployment: AWS EC2 Ubuntu
 
-After creation, your project should look like this:
+The original open-source application was containerized and deployed on an AWS EC2 instance using Docker Compose.
 
-```
-app/
-  config/
-  migrations/
-  scripts/
-  src-client/
-  src-server/
-  package.json
-  README.md
-  .env.example
-```
+## System Architecture
 
+The application follows a 3-tier architecture:
 
+Browser → React/Nginx Frontend → Node.js/Express Backend → PostgreSQL Database
 
-## Prerequisites
-Before installing, please make sure to have global installations of
-* [node v8 or higher](https://nodejs.org/en/download/)
-* npm v5 or higher
-* [PostgreSQL](https://www.postgresql.org/download/) (if running a local DB instance)
+All services communicate through a private Docker network named `app-network`.
 
-## Installation
-1. Execute `npm install` to configure the local environment.
-2. Create `.env` file and define environmental variables (see `.env.example` for example)
-3. Perform DB initialization/migration and seeding `npm run seed`
-4. Start the development server `npm run dev`
-5. Build the production version `npm run build`
+## Docker Services
 
+| Service | Technology | Container Port | Host Port |
+|---|---|---:|---:|
+| Frontend | React + Nginx | 80 | 3000 |
+| Backend | Node.js + Express | 5000 | 5000 |
+| Database | PostgreSQL 16 Alpine | 5432 | Not exposed |
 
-## Usage
-This application uses npm scripts for testing, development, and deployment.
-Note that the pre-commit hook runs the build script which compiles FE and lints BE code.
+PostgreSQL is not exposed to the public internet. It is accessible only by the backend through the Docker network.
 
-### Primary
-* `$ npm run start`: run the production version of the app
-* `$ npm run build`: build the production bundle of the FE app (linting is automatically executed), and perform linting of the BE code
-* `$ npm run lint`: perform linting of the BE code
-* `$ npm run seed`: perform DB initialization/migration and seeding
-* `$ npm run dev`: run the development version of the app
-* `$ npm run test:client`: run FE tests using Jest
-* `$ npm run test:server`: run BE tests using Jest
+## Persistent Data
 
-### Secondary
-* `$ npm run client:dev`: run Webpack dev server for FE development
-* `$ npm run server:dev`: run the development version of BE
-* `$ npm run server:prod`: alias of `start`
-* `$ npm run pg-migrate`: alias of `node-pg-migrate` module
-* `$ npm run db:migrate`: run DB migration scripts
-* `$ npm run db:seed`: alias of `seed`
+PostgreSQL uses a named Docker volume:
 
-## Authentication Endpoints (/auth/*)
-This project uses JWT for authentication.
+`postgres_data`
 
-### `POST /auth/login`: Authenticate User
-This endpoint authenticates a user. An example of the payload (input data) is provided below:
-```
-body: {
-    email   : String,  /* required */
-    password: String,  /* required */
-}
-```
-The output returns JWT token and user object:
-```
-let response = {
-    statusCode: 200,
-    body: {
-        token  : String,
-        user   : Object,
-    }
-}
-```
+The volume ensures database data persists even when the PostgreSQL container is recreated.
 
-### `POST /auth/register`: Register New User
-This endpoint registers a new user. An example of the payload (input data) is provided below:
-```
-body: {
-    email    : String,    /* required */
-    firstName: String,    /* required */
-    lastName : String,    /* required */
-    password : String,    /* required */
-}
-```
-The output is the same as from `POST /auth/login`
+## Docker Networking
 
-### `GET /auth/me`: Get Current User
-This endpoint returns the User object associated with the currently authenticated user. No input data is required
-The output is provided is an object with the following structure:
-```
-let response = {
-    statusCode: 200,
-    body: {
-        id       : Number,
-        email    : String,
-        firstName: String,
-        lastName : String,
-        createdAt: Date,
-    }
-}
-```
+Docker Compose creates a custom network:
 
-### Seed data (sample user)
-```
-Email: user@test.com
-Password: password
-```
-## API Endpoints (/api/*)
+`app-network`
 
-### `POST /api/posts`: Create a New Post
-This endpoint creates a new Post with current user as author. An example of the payload (input data) is provided below:
-```
-body: {
-    content: Text,      /* required */
-    title  : String     /* required */
-}
-```
-The output echos back the provided data with the system-generated record ID:
-```
-let response = {
-    statusCode: 200,
-    body: {
-        id     : Number,
-        content: Text,
-        title  : String,
-        user_id: Number,
-    }
-}
-```
+The frontend communicates with the backend, and the backend communicates with PostgreSQL using Docker service names instead of hardcoded IP addresses.
 
-### `GET /api/posts`: Get all Posts
-This endpoint returns the complete set of available Posts. No input data is required
-The output is provided in array with each object having the structure described above:
-```
-let response = {
-    statusCode: 200,
-    body: [
-            Post1,
-            Post2,
-            ...
-            PostN
-        ]
-    }
-```
+## Deployment on AWS EC2
 
-### `GET /api/posts/:id`: Get a Post by ID
-This endpoint returns an individual Post by ID. The ID is provided as a URI parameter.
-The output is the same as from `POST /api/posts`
+The application was deployed on an Ubuntu AWS EC2 instance.
 
-### `PUT /api/posts/:id`: Update a Post by ID
-This endpoint updates an existing Post by ID. The input/output formats are the same as in `POST /api/posts`
+Build and start all services:
 
-### `DELETE /api/posts/:id`: Delete a Post by ID
-This endpoint deletes an individual Post by ID. The ID is provided as a URI parameter.
+```bash
+docker compose up -d --build
+
+Check running containers:
+
+docker compose ps
+
+Check backend logs:
+
+docker compose logs --tail=30 backend
+
+Test the backend:
+
+curl -I http://localhost:5000
+
+The backend returned HTTP 200 OK during deployment testing.
+
+Security Group
+
+The EC2 security group allows:
+
+SSH: TCP 22
+Frontend: TCP 3000
+Backend API: TCP 5000
+
+PostgreSQL port 5432 is not exposed through the EC2 security group.
+
+Application Access
+
+Frontend:
+
+http://<EC2-PUBLIC-IP>:3000
+
+Backend API:
+
+http://<EC2-PUBLIC-IP>:5000
+Technologies Used
+React
+Nginx
+Node.js
+Express
+PostgreSQL 16
+Docker
+Docker Compose
+AWS EC2
+Ubuntu
+Git & GitHub
+Dockerization
+
+Separate Dockerfiles are used for the frontend and backend.
+
+The frontend uses a production build served through Nginx.
+
+The backend runs the production Node.js/Express server.
+
+PostgreSQL runs using the lightweight postgres:16-alpine image.
+
+Persistence
+
+A named Docker volume is used for PostgreSQL:
+
+postgres_data
+
+This keeps database data available even if the database container is removed and recreated.
+
+Repository Changes
+
+The main DevOps changes include:
+
+Added Dockerfile.frontend
+Added Dockerfile.backend
+Added docker-compose.yml
+Added Nginx configuration
+Added Docker networking
+Added PostgreSQL persistent volume
+Configured AWS EC2 deployment
+Documented security group and exposed ports
+Added deployment and verification commands
+Conclusion
+
+The application was successfully containerized using Docker Compose and deployed on AWS EC2.
+
+The final architecture separates the frontend, backend, and database into independent containers while using Docker networking and persistent storage for reliable deployment.
